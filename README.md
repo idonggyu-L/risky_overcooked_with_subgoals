@@ -126,7 +126,17 @@ python ./testing/package_test.py
 
 
 ---
-
+## Cite this Work
+```
+@inproceedings{
+  smith2025risksensitive,
+  title={Risk-Sensitive Theory of Mind: Coordinating with Agents of Unknown Bias using Cumulative Prospect Theory},
+  author={Mason O. Smith and Wenlong Zhang},
+  booktitle={Forty-second International Conference on Machine Learning},
+  year={2025},
+  url={https://openreview.net/forum?id=MRD19y4Zjm}
+}
+```
 
 ## References
 [1] Carroll, M., Shah, R., Ho, M. K., Griffiths, T., Seshia, S.,
