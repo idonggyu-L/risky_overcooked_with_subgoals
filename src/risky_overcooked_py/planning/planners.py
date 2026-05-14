@@ -165,7 +165,7 @@ class MotionPlanner(object):
         to go from starting position to goal position (not including
         interaction action)."""
         # NOTE: currently unused, pretty bad code. If used in future, clean up
-        min_cost = np.Inf
+        min_cost = np.inf
         for d1, d2 in itertools.product(Direction.ALL_DIRECTIONS, repeat=2):
             start = (pos1, d1)
             end = (pos2, d2)
@@ -222,7 +222,10 @@ class MotionPlanner(object):
         facing_terrain_type = self.mdp.get_terrain_type_at_pos(
             pos_of_facing_terrain
         )
-        if (facing_terrain_type == " " or facing_terrain_type == "W") or (
+        # Motion goals should face non-walkable interaction features.
+        # "G" is walkable (subgoal tile), so allowing goals to face it can break
+        # orientation-only assumptions in action_plan_from_positions.
+        if (facing_terrain_type == " " or facing_terrain_type == "W" or facing_terrain_type == "G") or (
             facing_terrain_type == "X"
             and pos_of_facing_terrain not in self.counter_goals
         ):

@@ -15,6 +15,7 @@ POT = "P"
 DISH_DISPENSER = "D"
 SERVING_LOC = "S"
 WATER = "W"
+SUBGOAL = "G"
 
 CODE_TO_TYPE = {
     0: EMPTY,
@@ -24,7 +25,8 @@ CODE_TO_TYPE = {
     4: POT,
     5: DISH_DISPENSER,
     6: SERVING_LOC,
-    7: WATER
+    7: WATER,
+    8: SUBGOAL,
 }
 TYPE_TO_CODE = {v: k for k, v in CODE_TO_TYPE.items()}
 

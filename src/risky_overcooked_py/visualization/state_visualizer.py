@@ -12,6 +12,7 @@ from risky_overcooked_py.mdp.layout_generator import (
     ONION_DISPENSER,
     POT,
     SERVING_LOC,
+    SUBGOAL,
     TOMATO_DISPENSER,
     WATER
 )
@@ -101,6 +102,7 @@ class StateVisualizer:
         POT: "pot",
         DISH_DISPENSER: "dishes",
         SERVING_LOC: "serve",
+        SUBGOAL: "floor",
         WATER: "water",
     }
 
@@ -268,7 +270,7 @@ class StateVisualizer:
 
         return img_path
 
-    def render_state_nochefs(self, state, grid, hud_data=None, action_probs=None):
+    def render_state_nochefs(self, state, grid, hud_data=None, action_probs=None, mdp=None):
         """
         returns surface with rendered game state scaled to selected size,
         decoupled from display_rendered_state function to make testing easier
@@ -279,7 +281,7 @@ class StateVisualizer:
         grid_surface = pygame.surface.Surface(
             self._unscaled_grid_pixel_size(grid)
         )
-        self._render_grid(grid_surface, grid)
+        self._render_grid(grid_surface, grid, mdp=mdp)
         # self._render_players(grid_surface, state.players)
         self._render_objects(grid_surface, state.objects, grid)
 
@@ -328,7 +330,7 @@ class StateVisualizer:
 
         return result_surface
 
-    def render_state(self, state, grid, hud_data=None, action_probs=None):
+    def render_state(self, state, grid, hud_data=None, action_probs=None, mdp=None):
         """
         returns surface with rendered game state scaled to selected size,
         decoupled from display_rendered_state function to make testing easier
@@ -339,7 +341,7 @@ class StateVisualizer:
         grid_surface = pygame.surface.Surface(
             self._unscaled_grid_pixel_size(grid)
         )
-        self._render_grid(grid_surface, grid)
+        self._render_grid(grid_surface, grid, mdp=mdp)
         self._render_players(grid_surface, state.players)
         self._render_objects(grid_surface, state.objects, grid)
 
@@ -424,7 +426,8 @@ class StateVisualizer:
             y_tiles * self.UNSCALED_TILE_SIZE,
         )
 
-    def _render_grid(self, surface, grid):
+    def _render_grid(self, surface, grid, mdp=None):
+        subgoal_tiles = []
         for y_tile, row in enumerate(grid):
             for x_tile, tile in enumerate(row):
                 self.TERRAINS_IMG.blit_on_surface(
@@ -432,6 +435,50 @@ class StateVisualizer:
                     self._position_in_unscaled_pixels((x_tile, y_tile)),
                     StateVisualizer.TILE_TO_FRAME_NAME[tile],
                 )
+                if tile == SUBGOAL:
+                    subgoal_tiles.append((x_tile, y_tile))
+
+        marker_color = (245, 210, 60)
+        water_marker_color = (85, 210, 235)
+        marker_radius = max(2, self.UNSCALED_TILE_SIZE // 4)
+        marker_font = self._init_font(9, self.hud_font_path, self.hud_system_font_name)
+        for idx, (x_tile, y_tile) in enumerate(
+            sorted(subgoal_tiles, key=lambda p: (p[1], p[0])), start=1
+        ):
+            center_x = x_tile * self.UNSCALED_TILE_SIZE + self.UNSCALED_TILE_SIZE // 2
+            center_y = y_tile * self.UNSCALED_TILE_SIZE + self.UNSCALED_TILE_SIZE // 2
+            pygame.draw.circle(surface, marker_color, (center_x, center_y), marker_radius, width=2)
+            label_surface = marker_font.render(str(idx), True, marker_color)
+            label_pos = (
+                center_x - label_surface.get_width() // 2,
+                center_y - label_surface.get_height() // 2,
+            )
+            surface.blit(label_surface, label_pos)
+
+        # If the mdp has explicit G->W links, overlay matching ids on water positions too.
+        if mdp is not None and getattr(mdp, "subgoal_to_water", None):
+            sorted_links = sorted(mdp.subgoal_to_water.items(), key=lambda item: (item[0][1], item[0][0]))
+            water_positions = set()
+            for _subgoal_pos, water_targets in sorted_links:
+                if (
+                    isinstance(water_targets, tuple)
+                    and len(water_targets) == 2
+                    and all(isinstance(v, int) for v in water_targets)
+                ):
+                    water_positions.add(water_targets)
+                else:
+                    water_positions.update(water_targets)
+
+            for idx, (wx, wy) in enumerate(sorted(water_positions, key=lambda p: (p[1], p[0])), start=1):
+                center_x = wx * self.UNSCALED_TILE_SIZE + self.UNSCALED_TILE_SIZE // 2
+                center_y = wy * self.UNSCALED_TILE_SIZE + self.UNSCALED_TILE_SIZE // 2
+                pygame.draw.circle(surface, water_marker_color, (center_x, center_y), marker_radius, width=2)
+                label_surface = marker_font.render(str(idx), True, water_marker_color)
+                label_pos = (
+                    center_x - label_surface.get_width() // 2,
+                    center_y - label_surface.get_height() // 2,
+                )
+                surface.blit(label_surface, label_pos)
 
     def _position_in_unscaled_pixels(self, position):
         """

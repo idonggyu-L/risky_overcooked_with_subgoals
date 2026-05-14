@@ -20,16 +20,16 @@ class Recipe:
 
     TOMATO = "tomato"
     ONION = "onion"
-    ALL_INGREDIENTS = [ONION, TOMATO]
+    ALL_INGREDIENTS = [ONION, TOMATO] # 허용되는 전체 재료 목록
 
-    ALL_RECIPES_CACHE = {}
-    STR_REP = {"tomato": "†", "onion": "ø"}
+    ALL_RECIPES_CACHE = {} # 캐싱된 모든 레시피를 저장하는 클래스 변수. 키는 재료의 정렬된 튜플의 해시값, 값은 해당 레시피 객체입니다. 레시피 객체는 불변이므로 캐싱이 가능합니다.
+    STR_REP = {"tomato": "†", "onion": "ø"} # 레이아웃에서 재료를 시각적으로 구분하기 위한 문자열 표현
 
-    _computed = False
-    _configured = False
-    _conf = {}
+    _computed = False # 레시피가 계산되었는지 여부를 나타내는 클래스 변수
+    _configured = False # 레시피 클래스가 구성되었는지 여부를 나타내는 클래스 변수
+    _conf = {} # 레시피 클래스의 구성 정보를 저장하는 클래스 변수. 예: 최대 재료 수, 요리 시간, 가치 등
 
-    def __new__(cls, ingredients):
+    def __new__(cls, ingredients): # 레시피 객체를 생성하는 클래스 메서드입니다. 입력된 재료 리스트를 검증하고, 유효한 경우 캐싱된 레시피 객체를 반환하거나 새로 생성하여 반환합니다.
         if not cls._configured:
             raise OvercookedException(
                 "Recipe class must be configured before recipes can be created"
@@ -56,34 +56,34 @@ class Recipe:
                     len(ingredients), cls.MAX_NUM_INGREDIENTS
                 )
             )
-        key = hash(tuple(sorted(ingredients)))
+        key = hash(tuple(sorted(ingredients))) # 재료 리스트를 정렬된 튜플로 변환하여 해시값을 계산합니다. 이렇게 하면 재료의 순서에 관계없이 동일한 재료 조합이 동일한 키로 매핑됩니다.
         if key in cls.ALL_RECIPES_CACHE:
             return cls.ALL_RECIPES_CACHE[key]
-        cls.ALL_RECIPES_CACHE[key] = super(Recipe, cls).__new__(cls)
+        cls.ALL_RECIPES_CACHE[key] = super(Recipe, cls).__new__(cls) # 새로운 레시피 객체를 생성하여 캐시에 저장합니다. 이렇게 하면 동일한 재료 조합에 대해 항상 동일한 레시피 객체가 반환됩니다.
         return cls.ALL_RECIPES_CACHE[key]
 
     def __init__(self, ingredients):
-        self._ingredients = ingredients
+        self._ingredients = ingredients # 레시피 객체의 인스턴스 변수로 재료 리스트를 저장합니다. 이 리스트는 불변이므로, 레시피 객체는 생성된 후 변경되지 않습니다.
 
-    def __getnewargs__(self):
-        return (self._ingredients,)
+    def __getnewargs__(self): # 객체 직렬화 시에 사용되는 메서드로, 객체를 새로 생성할 때 필요한 인자를 반환합니다. 여기서는 레시피 객체가 재료 리스트로 생성되므로, 재료 리스트를 튜플 형태로 반환합니다.
+        return (self._ingredients,) 
 
     def __int__(self):
-        num_tomatoes = len([_ for _ in self.ingredients if _ == Recipe.TOMATO])
-        num_onions = len([_ for _ in self.ingredients if _ == Recipe.ONION])
+        num_tomatoes = len([_ for _ in self.ingredients if _ == Recipe.TOMATO]) # 레시피에 포함된 토마토의 수를 계산합니다.
+        num_onions = len([_ for _ in self.ingredients if _ == Recipe.ONION]) # 레시피에 포함된 양파의 수를 계산합니다.
 
-        mixed_mask = int(bool(num_tomatoes * num_onions))
-        mixed_shift = (Recipe.MAX_NUM_INGREDIENTS + 1) ** len(
+        mixed_mask = int(bool(num_tomatoes * num_onions)) # 레시피에 토마토와 양파가 모두 포함되어 있는지 여부를 나타내는 혼합 마스크입니다. 둘 다 포함되어 있으면 1, 그렇지 않으면 0이 됩니다.
+        mixed_shift = (Recipe.MAX_NUM_INGREDIENTS + 1) ** len( 
             Recipe.ALL_INGREDIENTS
-        )
-        encoding = num_onions + (Recipe.MAX_NUM_INGREDIENTS + 1) * num_tomatoes
+        ) # 레시피의 재료 조합을 고유하게 인코딩하기 위한 시프트 값입니다. 예를 들어, 토마토와 양파가 모두 포함된 레시피는 혼합 마스크가 1이므로, 이 시프트 값을 곱하여 토마토와 양파의 조합을 고유하게 인코딩할 수 있습니다.
+        encoding = num_onions + (Recipe.MAX_NUM_INGREDIENTS + 1) * num_tomatoes # 레시피의 재료 조합을 고유하게 인코딩하는 값입니다. 양파의 수와 토마토의 수를 조합하여 계산됩니다. 예를 들어, 양파가 2개이고 토마토가 1개인 레시피는 num_onions가 2이고 num_tomatoes가 1이므로, encoding은 2 + (3 + 1) * 1 = 6이 됩니다.
 
-        return mixed_mask * encoding * mixed_shift + encoding
+        return mixed_mask * encoding * mixed_shift + encoding # 레시피의 재료 조합을 고유하게 인코딩한 값을 반환합니다. 혼합 마스크가 1인 경우에는 encoding에 시프트 값을 곱하여 토마토와 양파의 조합을 고유하게 인코딩하고, 혼합 마스크가 0인 경우에는 encoding만 반환합니다. 이렇게 하면 토마토와 양파의 조합이 동일한 레시피는 동일한 정수로 인코딩됩니다.
 
-    def __hash__(self):
+    def __hash__(self): # 레시피 객체의 해시값을 계산하는 메서드입니다. 레시피 객체는 재료 리스트로 구성되어 있으며, 이 리스트는 불변이므로, 재료 리스트의 정렬된 튜플의 해시값을 반환하여 레시피 객체의 해시값으로 사용합니다. 이렇게 하면 동일한 재료 조합을 가진 레시피 객체는 동일한 해시값을 가지게 됩니다.
         return hash(self.ingredients)
 
-    def __eq__(self, other):
+    def __eq__(self, other): # 레시피 객체의 동등성 비교를 수행하는 메서드입니다. 다른 객체가 Recipe 클래스의 인스턴스인지 확인한 후, 재료 리스트의 정렬된 튜플이 동일한지 비교하여 두 레시피 객체가 동일한 재료 조합을 가지고 있는지 확인합니다. 이렇게 하면 재료의 순서에 관계없이 동일한 재료 조합을 가진 레시피 객체는 서로 동등하다고 판단됩니다.
         # The ingredients property already returns sorted items, so equivalence check is sufficient
         return self.ingredients == other.ingredients
 
@@ -380,7 +380,6 @@ class Recipe:
     def from_dict(cls, obj_dict):
         return cls(**obj_dict)
 
-
 class ObjectState(object):
     """
     State of an object in OvercookedGridworld.
@@ -430,7 +429,6 @@ class ObjectState(object):
     def from_dict(cls, obj_dict):
         obj_dict = copy.deepcopy(obj_dict)
         return ObjectState(**obj_dict)
-
 
 class SoupState(ObjectState):
     def __init__(
@@ -697,8 +695,6 @@ class SoupState(ObjectState):
             soup.auto_finish()
         return soup
 
-
-
 class PlayerState(object):
     """
     State of a player in OvercookedGridworld.
@@ -790,8 +786,6 @@ class PlayerState(object):
         if held_obj is not None:
             player_dict["held_object"] = SoupState.from_dict(held_obj)
         return PlayerState(**player_dict)
-
-
 
 class OvercookedState(object):
     """A state in OvercookedGridworld."""
@@ -1027,11 +1021,10 @@ class OvercookedState(object):
         state_dict["objects"] = {ob.position: ob for ob in object_list}
         return OvercookedState(**state_dict)
 
-
 BASE_REW_SHAPING_PARAMS = {
     "PLACEMENT_IN_POT_REW": 3, # shared reward if both agents interact
     # "DISH_PICKUP_REWARD": 3,
-    "DISH_PICKUP_REWARD": 0, # encourages behavior for picking up dishes and slipping
+    "DISH_PICKUP_REWARD": 1, # encourages behavior for picking up dishes and slipping
     # "SOUP_PICKUP_REWARD": 5, # shared reward if both agents interact
     "SOUP_PICKUP_REWARD": 3,  # shared reward if both agents interact
     "DISH_DISP_DISTANCE_REW": 0,
@@ -1107,7 +1100,6 @@ POTENTIAL_CONSTANTS = {
         "pot_tomato_steps": 6,
     },
 }
-
 
 class OvercookedGridworld(object):
     """
@@ -1204,6 +1196,68 @@ class OvercookedGridworld(object):
         self.dropped_object_rewards = {
             'onion': 0, 'dish': 0, 'soup': 0
         }
+
+        self.subgoal_disable_steps = int(kwargs.get("subgoal_disable_steps", 20))
+        self.subgoal_to_water = {}
+        self.water_disable_timers = {}
+        self._initialize_subgoal_links()
+
+    def _initialize_subgoal_links(self):
+        subgoals = sorted(self.terrain_pos_dict.get("G", []), key=lambda p: (p[1], p[0]))
+        waters = sorted(self.terrain_pos_dict.get("W", []), key=lambda p: (p[1], p[0]))
+
+        if not subgoals:
+            return
+
+        assert waters, "At least one puddle (W) is required when using subgoals (G)"
+        self.subgoal_to_water = {
+            subgoal_pos: tuple(waters)
+            for subgoal_pos in subgoals
+        }
+        self.water_disable_timers = {water_pos: 0 for water_pos in waters}
+
+    def _set_water_active(self, water_pos, is_active):
+        x, y = water_pos
+        old_tile = self.terrain_mtx[y][x]
+        new_tile = "W" if is_active else " "
+        if old_tile == new_tile:
+            return
+
+        self.terrain_mtx[y][x] = new_tile
+
+        if old_tile in self.terrain_pos_dict and water_pos in self.terrain_pos_dict[old_tile]:
+            self.terrain_pos_dict[old_tile].remove(water_pos)
+        if water_pos not in self.terrain_pos_dict[new_tile]:
+            self.terrain_pos_dict[new_tile].append(water_pos)
+
+    def _activate_subgoal(self, subgoal_pos):
+        if subgoal_pos not in self.subgoal_to_water:
+            return
+
+        for water_pos in self.subgoal_to_water[subgoal_pos]:
+            self.water_disable_timers[water_pos] = self.subgoal_disable_steps
+            self._set_water_active(water_pos, is_active=False)
+
+    def _tick_subgoal_timers(self):
+        if not self.water_disable_timers:
+            return
+
+        for water_pos in list(self.water_disable_timers.keys()):
+            if self.water_disable_timers[water_pos] <= 0:
+                continue
+
+            self.water_disable_timers[water_pos] -= 1
+            if self.water_disable_timers[water_pos] == 0:
+                self._set_water_active(water_pos, is_active=True)
+
+    def _reset_dynamic_terrain(self):
+        if not self.water_disable_timers:
+            return
+
+        for water_pos in self.water_disable_timers:
+            self.water_disable_timers[water_pos] = 0
+            self._set_water_active(water_pos, is_active=True)
+
     @staticmethod
     def from_layout_name(layout_name, **params_to_overwrite):
         """
@@ -1355,6 +1409,7 @@ class OvercookedGridworld(object):
                 raise ValueError("Invalid action")
 
     def get_standard_start_state(self):
+        self._reset_dynamic_terrain()
         if self.start_state:
             return self.start_state
         start_state = OvercookedState.from_player_positions(
@@ -1368,6 +1423,7 @@ class OvercookedGridworld(object):
         self, random_start_pos=False, rnd_obj_prob_thresh=0.0
     ):
         def start_state_fn():
+            self._reset_dynamic_terrain()
             if random_start_pos:
                 valid_positions = self.get_valid_joint_player_positions()
                 start_pos = valid_positions[
@@ -1477,6 +1533,7 @@ class OvercookedGridworld(object):
 
         # Additional dense reward logic
         # shaped_reward += self.calculate_distance_based_shaped_reward(state, new_state)
+        self._tick_subgoal_timers()
         infos = {
             "event_infos": events_infos,
             "sparse_reward_by_agent": sparse_reward_by_agent,
@@ -1517,6 +1574,10 @@ class OvercookedGridworld(object):
             pos, o = player.position, player.orientation
             i_pos = Action.move_in_direction(pos, o)
             terrain_type = self.get_terrain_type_at_pos(i_pos)
+            current_terrain_type = self.get_terrain_type_at_pos(pos)
+            if current_terrain_type == "G":
+                self._activate_subgoal(pos)
+                continue
 
             # NOTE: we always log pickup/drop before performing it, as that's
             # what the logic of determining whether the pickup/drop is useful assumes
@@ -1671,6 +1732,9 @@ class OvercookedGridworld(object):
                         if obj.name == Recipe.ONION:
                             events_infos["potting_onion"][player_idx] = True
 
+            elif terrain_type == "G":
+                pass
+
             elif terrain_type == "S" and player.has_object():
                 obj = player.get_object()
                 if obj.name == "soup":
@@ -1683,12 +1747,12 @@ class OvercookedGridworld(object):
         return sparse_reward, shaped_reward
     def is_water(self, pos):
         return pos in self.terrain_pos_dict["W"]
-
+# 물건을 들고 물로 진입했을 때만 미끄러질 수 있음
     def check_can_slip(self,old_player_state,new_player_state):
         can_slip = True
 
         # They end their turn in water
-        if not self.is_water(new_player_state.position): can_slip = False
+        if not self.is_water(new_player_state.position): can_slip = False 
 
         # If they are waiting or interacting ==> no slip
         # same_position = np.all(old_player_state.position==old_player_state.position)
@@ -1705,7 +1769,8 @@ class OvercookedGridworld(object):
         if not old_player_state.has_object(): can_slip = False
 
         return can_slip
-    def resolve_enter_water(self, state, new_state,events_infos):
+    
+    def resolve_enter_water(self, state, new_state,events_infos): 
         """
         If a player enters a puddle, they have a p_slip chance to drop their held item
         and experince slight delay in action.
@@ -1889,7 +1954,11 @@ class OvercookedGridworld(object):
 
     def get_valid_player_positions(self):
         # return self.terrain_pos_dict[" "]
-        return self.terrain_pos_dict[" "]  + self.terrain_pos_dict["W"]
+        return (
+            self.terrain_pos_dict[" "]
+            + self.terrain_pos_dict["W"]
+            + self.terrain_pos_dict["G"]
+        )
 
     def get_valid_joint_player_positions(self):
         """Returns all valid tuples of the form (p0_pos, p1_pos, p2_pos, ...)"""
@@ -1998,7 +2067,7 @@ class OvercookedGridworld(object):
 
         return pots_states_dict
 
-    def get_reachable_counters(self, valid_terrain = (" ","W", "1","2")):
+    def get_reachable_counters(self, valid_terrain = (" ","W", "G", "1","2")):
         reachable_counters = []
         counter_locations = self.get_counter_locations()
 
@@ -2285,7 +2354,7 @@ class OvercookedGridworld(object):
 
         assert all(
             # c in "XOPDST123456789 " for c in all_elements
-            c in "XWOPDST123456789 " for c in all_elements
+            c in "XGWOPDST123456789 " for c in all_elements
         ), "Invalid character in grid" + ''.join(["\n"+str(r) for r in grid])
         assert all_elements.count("1") == 1, "'1' must be present exactly once" + ''.join(["\n"+str(r) for r in grid])
         assert (
@@ -2601,7 +2670,7 @@ class OvercookedGridworld(object):
     ###################
     # one-step ahead #
     ###################
-    def one_step_lookahead(self, state, joint_action, encoded=True, as_tensor=False, device=None):
+    def one_step_lookahead(self, state, joint_action, encoded=True, as_tensor=False, device=None, obs_encoder="vector", horizon=400):
         """
 
         :param state:
@@ -2611,7 +2680,13 @@ class OvercookedGridworld(object):
 
         def make_obs(_state):
             if encoded and as_tensor:
-                next_obs = self.get_lossless_encoding_vector_astensor(_state, device).unsqueeze(0)
+                obs_encoder_l = str(obs_encoder).lower()
+                if obs_encoder_l in {"cnn", "lossless_cnn", "lossless_state"}:
+                    next_obs = self.get_lossless_state_encoding_astensor(_state, device, horizon=horizon).unsqueeze(0)
+                elif obs_encoder_l in {"vector", "mlp"}:
+                    next_obs = self.get_lossless_encoding_vector_astensor(_state, device).unsqueeze(0)
+                else:
+                    raise ValueError(f"Unknown obs_encoder '{obs_encoder}'")
                 # next_obs =torch.tensor(self.get_lossless_encoding_vector(_state)).to(device=device, non_blocking=True).unsqueeze(0)
             elif encoded and not as_tensor:
                 next_obs = self.get_lossless_encoding_vector(_state, device)
@@ -2721,7 +2796,15 @@ class OvercookedGridworld(object):
 
     def get_lossless_encoding_vector_astensor(self, overcooked_state,device):
         feat_vec = self.get_lossless_encoding_vector(overcooked_state)
-        return torch.from_numpy(feat_vec).cuda(non_blocking=True).float()
+        return torch.from_numpy(feat_vec).to(device=device, non_blocking=True).float()
+
+    def get_lossless_state_encoding_tensor_shape(self):
+        obs = self.lossless_state_encoding(self.get_standard_start_state())[0]
+        return (obs.shape[2], obs.shape[0], obs.shape[1])
+
+    def get_lossless_state_encoding_astensor(self, overcooked_state, device, player_idx=0, horizon=400):
+        obs = self.lossless_state_encoding(overcooked_state, horizon=horizon)[player_idx]
+        return torch.from_numpy(obs).permute(2, 0, 1).contiguous().to(device=device, non_blocking=True).float()
 
         # # feature_vector = self.get_lossless_encoding_vector(overcooked_state)
         # # feature_vector =  torch.tensor(feature_vector).to(device=device, non_blocking=True).unsqueeze(0)
@@ -2968,13 +3051,11 @@ class OvercookedGridworld(object):
             "Using the `lossless_state_encoding_shape` property is deprecated. Please use `get_lossless_state_encoding_shape` method instead",
             DeprecationWarning,
         )
-        # return np.array(list(self.shape) + [26])
-        return np.array(list(self.shape) + [27]) # added water mask
+        return np.array(list(self.shape) + [28])
 
 
     def get_lossless_state_encoding_shape(self):
-        # return np.array(list(self.shape) + [26])
-        return np.array(list(self.shape) + [27]) # added water mask
+        return np.array(list(self.shape) + [28])
 
     # def lossless_state_encoding(self, overcooked_state, debug=False):
     #     """ Old implementation that resolves bool check error from https://github.com/HumanCompatibleAI/overcooked_ai/blob/6eaceb0a9a2501f1b9fccbf4c7016d6662ed1108/overcooked_ai_py/mdp/overcooked_mdp.py """
@@ -3087,6 +3168,8 @@ class OvercookedGridworld(object):
             "tomato_disp_loc",
             "dish_disp_loc",
             "serve_loc",
+            "water_loc",
+            "subgoal_loc",
         ]
         variable_map_features = [
             "onions_in_pot",
@@ -3153,6 +3236,12 @@ class OvercookedGridworld(object):
 
             for loc in self.get_serving_locations():
                 state_mask_dict["serve_loc"][loc] = 1
+
+            for loc in self.terrain_pos_dict.get("W", []):
+                state_mask_dict["water_loc"][loc] = 1
+
+            for loc in self.terrain_pos_dict.get("G", []):
+                state_mask_dict["subgoal_loc"][loc] = 1
 
             # PLAYER LAYERS
             for i, player in enumerate(overcooked_state.players):
